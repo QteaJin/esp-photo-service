@@ -74,6 +74,48 @@ static void handleAutoStop() {
   server.send(200, "text/plain; charset=utf-8", "Автосъёмка остановлена");
 }
 
+static void handleCameraSettings() {
+  ColorSettings c = cameraGetColor();
+  server.send(200, "application/json",
+              String("{\"brightness\":") + c.brightness + ",\"contrast\":" + c.contrast +
+                  ",\"saturation\":" + c.saturation + ",\"ae_level\":" + c.aeLevel +
+                  ",\"wb_mode\":" + c.wbMode + ",\"lenc\":" + (c.lenc ? 1 : 0) + "}");
+}
+
+// /control?var=<имя>&val=<число>: применить параметр сразу, без сохранения в память
+static void handleControl() {
+  if (!server.hasArg("var") || !server.hasArg("val")) {
+    server.send(400, "text/plain; charset=utf-8", "Нужны параметры var и val");
+    return;
+  }
+  String var = server.arg("var");
+  int val = server.arg("val").toInt();
+  ColorSettings c = cameraGetColor();
+  if (var == "brightness") c.brightness = val;
+  else if (var == "contrast") c.contrast = val;
+  else if (var == "saturation") c.saturation = val;
+  else if (var == "ae_level") c.aeLevel = val;
+  else if (var == "wb_mode") c.wbMode = val;
+  else if (var == "lenc") c.lenc = (val != 0);
+  else {
+    server.send(400, "text/plain; charset=utf-8", "Неизвестный параметр");
+    return;
+  }
+  cameraSetColor(c);
+  handleCameraSettings();
+}
+
+static void handleCameraSave() {
+  cfg.color = cameraGetColor();
+  configSave(cfg);
+  server.send(200, "text/plain; charset=utf-8", "Сохранено");
+}
+
+static void handleCameraReset() {
+  cameraSetColor(ColorSettings());
+  handleCameraSettings();
+}
+
 static void handleStatus() {
   server.send(200, "application/json",
               String("{\"running\":") + (autoRunning ? "true" : "false") + ",\"interval\":" + cfg.interval + "}");
@@ -87,7 +129,7 @@ void setup() {
 
   configLoad(cfg);
 
-  if (!cameraInit()) {
+  if (!cameraInit(cfg.color)) {
     Serial.println("Camera init failed, restart in 5s");
     delay(5000);
     ESP.restart();
@@ -118,6 +160,10 @@ void setup() {
   server.on("/auto_start", HTTP_GET, handleAutoStart);
   server.on("/auto_stop", HTTP_GET, handleAutoStop);
   server.on("/status", HTTP_GET, handleStatus);
+  server.on("/camera_settings", HTTP_GET, handleCameraSettings);
+  server.on("/control", HTTP_GET, handleControl);
+  server.on("/camera_save", HTTP_GET, handleCameraSave);
+  server.on("/camera_reset", HTTP_GET, handleCameraReset);
   server.begin();
 }
 

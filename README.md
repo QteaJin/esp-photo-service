@@ -5,6 +5,7 @@ A port of the `main` branch of the Pi-Zero-Server project to the ESP32-S3 CAM (O
 ## What it does
 - Every N seconds it captures a frame (FHD, JPEG straight from the sensor) and sends `POST <server_url>?product=<MAC>` (multipart, field `file`). Timeout is 5 s, with one retry after 2 s. Frames are not stored anywhere.
 - Web panel on port 80: `/` page, `/preview` 640x480 JPEG (rotated 180°), `/auto_start?interval=N`, `/auto_stop`, `/status` -> `{"running":bool,"interval":int}`.
+- Colour tuning (applies to the preview and to the frames sent to the server): `-`/`+` buttons in the panel for brightness, contrast, saturation, exposure, white balance and lens correction. Changes apply immediately; the **Save** button stores them in flash. Routes: `/control?var=<brightness|contrast|saturation|ae_level|wb_mode|lenc>&val=N`, `/camera_settings`, `/camera_save`, `/camera_reset`.
 - `product` is the board's eFuse MAC (the equivalent of a Raspberry Pi serial number).
 
 ## Build and flash
