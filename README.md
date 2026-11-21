@@ -1,4 +1,4 @@
-# Esp32-video-server
+# esp-photo-service
 
 A port of the `main` branch of the Pi-Zero-Server project to the ESP32-S3 CAM (OV5640): a web panel with a live preview and automatic upload of snapshots to a server.
 
