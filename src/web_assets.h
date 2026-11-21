@@ -11,131 +11,228 @@ static const char INDEX_HTML[] PROGMEM = R"HTML(<!DOCTYPE html>
   <style>
     body { font-family: sans-serif; text-align: center; margin: 1.5rem auto; max-width: 720px; padding: 0 1rem; }
     img { max-width: 100%; height: auto; border: 1px solid #ccc; border-radius: 6px; }
+    h3 { margin: 1.6rem 0 .4rem; border-top: 1px solid #ddd; padding-top: 1rem; }
     .row { margin: 1rem 0; }
-    button { font-size: 1rem; padding: .5rem 1rem; border: 0; border-radius: 6px; color: #fff; cursor: pointer; }
+    button { font-size: 1rem; padding: .5rem 1rem; border: 0; border-radius: 6px; color: #fff; cursor: pointer; background: #6c757d; }
     button:disabled { opacity: .5; cursor: default; }
-    #btn-refresh { background: #0d6efd; } #btn-start { background: #198754; } #btn-stop { background: #dc3545; }
+    #btn-refresh, #btn-save, #btn-server { background: #0d6efd; } #btn-start { background: #198754; } #btn-stop { background: #dc3545; }
     input { font-size: 1rem; width: 5rem; padding: .3rem; text-align: center; }
     #status { font-weight: bold; }
-    .color { margin: 1rem auto; max-width: 420px; text-align: left; }
+    .block { margin: .6rem auto; max-width: 420px; text-align: left; }
     .crow { display: flex; align-items: center; justify-content: space-between; margin: .5rem 0; }
     .crow .name { flex: 1; }
-    .crow button { background: #6c757d; min-width: 3rem; min-height: 2.75rem; font-size: 1.25rem; padding: 0; }
+    .crow button { min-width: 3rem; min-height: 2.75rem; font-size: 1.25rem; padding: 0; }
     .crow .val { min-width: 5.5rem; text-align: center; font-weight: bold; }
-    #btn-save { background: #0d6efd; } #btn-reset { background: #6c757d; }
+    .srow { display: flex; justify-content: space-between; gap: 1rem; margin: .3rem 0; }
+    .srow span:last-child { font-weight: bold; text-align: right; }
+    .field { display: flex; align-items: center; justify-content: space-between; gap: .6rem; margin: .5rem 0; }
+    .field input { flex: 1; width: auto; min-width: 0; text-align: left; box-sizing: border-box; }
+    #server-port { flex: 0 0 6rem; }
+    .hint { font-size: .85rem; color: #666; margin: .2rem 0; }
+    .msg { min-height: 1.3rem; margin: .4rem 0; font-size: .95rem; }
+    .warn { color: #b35c00; font-weight: bold; }
   </style>
 </head>
 <body>
-  <h2>📷 Камера ESP32-S3</h2>
+  <h2>📷 ESP32-S3 Camera</h2>
   <div class="row"><img id="preview" src="/preview"></div>
-  <div class="row"><button id="btn-refresh">🔄 Обновить превью</button></div>
-  <div class="color">
-    <div class="crow" data-var="brightness" data-min="-2" data-max="2"><span class="name">Яркость</span><button class="dec">−</button><span class="val"></span><button class="inc">+</button></div>
-    <div class="crow" data-var="contrast" data-min="-2" data-max="2"><span class="name">Контраст</span><button class="dec">−</button><span class="val"></span><button class="inc">+</button></div>
-    <div class="crow" data-var="saturation" data-min="-2" data-max="2"><span class="name">Насыщенность</span><button class="dec">−</button><span class="val"></span><button class="inc">+</button></div>
-    <div class="crow" data-var="ae_level" data-min="-2" data-max="2"><span class="name">Экспозиция</span><button class="dec">−</button><span class="val"></span><button class="inc">+</button></div>
-    <div class="crow" data-var="wb_mode" data-min="0" data-max="4"><span class="name">Баланс белого</span><button class="dec">−</button><span class="val"></span><button class="inc">+</button></div>
-    <div class="crow" data-var="lenc" data-min="0" data-max="1"><span class="name">Коррекция краёв</span><button class="dec">−</button><span class="val"></span><button class="inc">+</button></div>
-    <div class="row"><button id="btn-save">💾 Сохранить</button> <button id="btn-reset">↩ Сбросить</button></div>
+  <div class="row"><button id="btn-refresh">🔄 Refresh preview</button></div>
+
+  <h3>Color</h3>
+  <div class="block" id="color-rows"></div>
+  <div class="row"><button id="btn-save">💾 Save</button> <button id="btn-reset">↩ Reset to defaults</button></div>
+  <div class="msg" id="msg-color"></div>
+
+  <h3>Board status</h3>
+  <div class="block">
+    <div class="srow"><span>Chip temperature</span><span id="sys-temp">—</span></div>
+    <div class="srow"><span>Wi-Fi signal</span><span id="sys-wifi">—</span></div>
+    <div class="srow"><span>IP address</span><span id="sys-ip">—</span></div>
+    <div class="srow"><span>Uptime</span><span id="sys-uptime">—</span></div>
+    <div class="srow"><span>Memory (heap)</span><span id="sys-heap">—</span></div>
+    <div class="srow"><span>Memory (PSRAM)</span><span id="sys-psram">—</span></div>
+    <div class="srow"><span>Last restart</span><span id="sys-reset">—</span></div>
   </div>
+  <div class="row"><button id="btn-sys">🔄 Refresh status</button></div>
+
+  <h3>Upload server</h3>
+  <div class="block">
+    <div class="field"><label for="server-ip">Server IP</label>
+      <input type="text" id="server-ip" inputmode="decimal" placeholder="192.168.0.212" autocomplete="off"></div>
+    <div class="field"><label for="server-port">Port</label>
+      <input type="number" id="server-port" value="8000" min="1" max="65535"></div>
+    <div class="hint" id="server-hint">Photos are sent to http://IP:PORT/upload</div>
+  </div>
+  <div class="row"><button id="btn-server">💾 Save server</button></div>
+  <div class="msg" id="msg-server"></div>
+
+  <h3>Auto capture</h3>
   <div class="row">
-    <label for="interval">Интервал (сек):</label>
+    <label for="interval">Interval (sec):</label>
     <input type="number" id="interval" value="30" min="1">
   </div>
   <div class="row">
-    <button id="btn-start">▶ Старт</button>
-    <button id="btn-stop" disabled>⏹ Стоп</button>
+    <button id="btn-start">▶ Start</button>
+    <button id="btn-stop" disabled>⏹ Stop</button>
   </div>
   <p id="status"></p>
+
+  <h3>Current settings</h3>
+  <div class="block">
+    <div class="srow"><span>Upload URL</span><span id="cur-url">—</span></div>
+    <div class="srow"><span>Interval</span><span id="cur-interval">—</span></div>
+    <div class="srow"><span>Auto capture</span><span id="cur-auto">—</span></div>
+    <div id="cur-color"></div>
+    <div class="warn" id="cur-unsaved"></div>
+  </div>
+  <div class="row"><button id="btn-settings">🔄 Reload settings</button></div>
   <script src="/main.js"></script>
 </body>
 </html>)HTML";
 
-// Порт static/js/main.js; добавлено только заполнение интервала из /status при первой загрузке.
+// Порт static/js/main.js с добавлением цвета, состояния платы, адреса сервера и блока текущих настроек.
 static const char MAIN_JS[] PROGMEM = R"JS(document.addEventListener("DOMContentLoaded", function () {
   const preview = document.getElementById("preview");
   const btnRefresh = document.getElementById("btn-refresh");
   const btnStart = document.getElementById("btn-start");
   const btnStop = document.getElementById("btn-stop");
+  const btnServer = document.getElementById("btn-server");
   const intervalInput = document.getElementById("interval");
   const status = document.getElementById("status");
-  let intervalFilled = false;
+  const serverIp = document.getElementById("server-ip");
+  const serverPort = document.getElementById("server-port");
+  const serverHint = document.getElementById("server-hint");
 
   function setStatus(text, isError=false) {
     status.textContent = text;
     status.style.color = isError ? "red" : "inherit";
   }
 
+  function setMsg(id, text, isError=false) {
+    const el = document.getElementById(id);
+    el.textContent = text;
+    el.style.color = isError ? "red" : "inherit";
+  }
+
+  function nowText() {
+    return new Date().toLocaleTimeString();
+  }
+
+  function errText(e) {
+    return e && e.message ? e.message : String(e);
+  }
+
+  // Ошибка HTTP: показываем текст ответа платы
+  function checkOk(r) {
+    if (r.ok) return r;
+    return r.text().then(t => { throw new Error(t || ("HTTP " + r.status)); });
+  }
+
   function refreshPreview() {
     preview.src = "/preview?ts=" + Date.now();
-    setStatus("Обновлено превью");
   }
 
   function updateButtons() {
     fetch("/status")
       .then(r => r.json())
       .then(data => {
-        if (!intervalFilled) { intervalInput.value = data.interval; intervalFilled = true; }
         if (data.running) {
           btnStart.disabled = true;
           btnStop.disabled = false;
-          setStatus(`Автосъёмка работает (интервал ${data.interval} сек)`);
+          setStatus(`Auto capture is running (interval ${data.interval} sec)`);
         } else {
           btnStart.disabled = false;
           btnStop.disabled = true;
-          setStatus("Автосъёмка остановлена");
+          setStatus("Auto capture is stopped");
         }
+        btnServer.disabled = data.running;
+        serverHint.textContent = data.running
+          ? "Stop auto capture to change the server"
+          : "Photos are sent to http://IP:PORT/upload";
       })
       .catch(e => {
-        setStatus("Ошибка получения статуса: " + e, true);
+        setStatus("Failed to get status: " + e, true);
       });
   }
 
   btnRefresh.addEventListener("click", function () {
-    setStatus("Обновление...");
     refreshPreview();
   });
 
   btnStart.addEventListener("click", function () {
     const interval = Math.max(1, parseInt(intervalInput.value || "5"));
-    setStatus("Запуск автосъёмки...");
+    setStatus("Starting auto capture...");
     fetch(`/auto_start?interval=${interval}`).then(r => r.text()).then(t => {
       setStatus(t);
       updateButtons();
+      loadSettings(false);
     }).catch(e => {
-      setStatus("Ошибка запуска: " + e, true);
+      setStatus("Failed to start: " + e, true);
     });
   });
 
   btnStop.addEventListener("click", function () {
-    setStatus("Остановка...");
+    setStatus("Stopping...");
     fetch("/auto_stop").then(r => r.text()).then(t => {
       setStatus(t);
       updateButtons();
+      loadSettings(false);
     }).catch(e => {
-      setStatus("Ошибка остановки: " + e, true);
+      setStatus("Failed to stop: " + e, true);
     });
   });
 
-  // Цветопередача: значения запрашиваются один раз при загрузке и после нажатий кнопок
-  const WB_NAMES = ["Авто", "Солнце", "Облачно", "Офис", "Дом"];
-  const colorRows = document.querySelectorAll(".crow");
-  let colorValues = {};
+  // ---- Color ----
+  const WB_NAMES = ["Auto", "Sunny", "Cloudy", "Office", "Home"];
+  const COLOR_PARAMS = [
+    { key: "brightness", label: "Brightness", min: -2, max: 2 },
+    { key: "contrast", label: "Contrast", min: -2, max: 2 },
+    { key: "saturation", label: "Saturation", min: -2, max: 2 },
+    { key: "ae_level", label: "Exposure", min: -2, max: 2 },
+    { key: "wb_mode", label: "White balance", min: 0, max: 4 },
+    { key: "lenc", label: "Lens correction", min: 0, max: 1 }
+  ];
+  let savedColor = null;
+  let liveColor = null;
+  let lastSettings = null;
   let previewTimer = null;
 
-  function showColor() {
-    colorRows.forEach(row => {
-      const v = colorValues[row.dataset.var];
-      let text = v > 0 && row.dataset.var !== "wb_mode" && row.dataset.var !== "lenc" ? "+" + v : String(v);
-      if (row.dataset.var === "wb_mode") text = WB_NAMES[v] || v;
-      if (row.dataset.var === "lenc") text = v ? "Вкл" : "Выкл";
-      row.querySelector(".val").textContent = text;
-    });
+  function fmtColor(key, v) {
+    if (key === "wb_mode") return WB_NAMES[v] || String(v);
+    if (key === "lenc") return v ? "On" : "Off";
+    return v > 0 ? "+" + v : String(v);
   }
 
-  function applyColorResponse(r) {
-    if (!r.ok) throw new Error("HTTP " + r.status);
-    return r.json().then(data => { colorValues = data; showColor(); });
+  const colorBox = document.getElementById("color-rows");
+  COLOR_PARAMS.forEach(p => {
+    const row = document.createElement("div");
+    row.className = "crow";
+    row.innerHTML = `<span class="name">${p.label}</span><button class="dec">−</button><span class="val" id="val-${p.key}">—</span><button class="inc">+</button>`;
+    colorBox.appendChild(row);
+    function step(delta) {
+      if (!liveColor) return;
+      const next = Math.min(p.max, Math.max(p.min, liveColor[p.key] + delta));
+      if (next === liveColor[p.key]) return;
+      fetch(`/control?var=${p.key}&val=${next}`)
+        .then(checkOk).then(r => r.json())
+        .then(data => {
+          liveColor = data;
+          renderColor();
+          renderCurrent();
+          setMsg("msg-color", "Applied at " + nowText() + " (not saved yet, press Save)");
+          schedulePreview();
+        })
+        .catch(e => setMsg("msg-color", "Color change failed: " + errText(e), true));
+    }
+    row.querySelector(".dec").addEventListener("click", () => step(-1));
+    row.querySelector(".inc").addEventListener("click", () => step(1));
+  });
+
+  function renderColor() {
+    if (!liveColor) return;
+    COLOR_PARAMS.forEach(p => {
+      document.getElementById("val-" + p.key).textContent = fmtColor(p.key, liveColor[p.key]);
+    });
   }
 
   function schedulePreview() {
@@ -143,36 +240,115 @@ static const char MAIN_JS[] PROGMEM = R"JS(document.addEventListener("DOMContent
     previewTimer = setTimeout(refreshPreview, 700);
   }
 
-  colorRows.forEach(row => {
-    const name = row.dataset.var;
-    const min = parseInt(row.dataset.min);
-    const max = parseInt(row.dataset.max);
-    function step(delta) {
-      const next = Math.min(max, Math.max(min, (colorValues[name] || 0) + delta));
-      if (next === colorValues[name]) return;
-      fetch(`/control?var=${name}&val=${next}`)
-        .then(applyColorResponse)
-        .then(() => { setStatus("Применено (не сохранено)"); schedulePreview(); })
-        .catch(e => setStatus("Ошибка настройки цвета: " + e, true));
-    }
-    row.querySelector(".dec").addEventListener("click", () => step(-1));
-    row.querySelector(".inc").addEventListener("click", () => step(1));
-  });
-
   document.getElementById("btn-save").addEventListener("click", function () {
-    fetch("/camera_save").then(r => r.text()).then(t => setStatus(t))
-      .catch(e => setStatus("Ошибка сохранения: " + e, true));
+    fetch("/camera_save").then(checkOk).then(r => r.text())
+      .then(() => loadSettings(false))
+      .then(() => {
+        const same = savedColor && liveColor && COLOR_PARAMS.every(p => savedColor[p.key] === liveColor[p.key]);
+        if (same) setMsg("msg-color", "Saved and confirmed on the board at " + nowText());
+        else setMsg("msg-color", "Saved, but the stored values differ from the current ones", true);
+      })
+      .catch(e => setMsg("msg-color", "Save failed: " + errText(e), true));
   });
 
   document.getElementById("btn-reset").addEventListener("click", function () {
-    fetch("/camera_reset").then(applyColorResponse)
-      .then(() => { setStatus("Сброшено к значениям по умолчанию (не сохранено)"); schedulePreview(); })
-      .catch(e => setStatus("Ошибка сброса: " + e, true));
+    fetch("/camera_reset").then(checkOk).then(r => r.json())
+      .then(data => {
+        liveColor = data;
+        renderColor();
+        renderCurrent();
+        setMsg("msg-color", "Reset to defaults at " + nowText() + " (not saved yet, press Save)");
+        schedulePreview();
+      })
+      .catch(e => setMsg("msg-color", "Reset failed: " + errText(e), true));
   });
 
-  fetch("/camera_settings").then(applyColorResponse)
-    .catch(e => setStatus("Ошибка получения настроек цвета: " + e, true));
+  // ---- Current settings (what is stored on the board) ----
+  function renderCurrent() {
+    if (!lastSettings) return;
+    document.getElementById("cur-url").textContent = lastSettings.server.url;
+    document.getElementById("cur-interval").textContent = lastSettings.interval + " sec";
+    document.getElementById("cur-auto").textContent = lastSettings.running ? "running" : "stopped";
+    const box = document.getElementById("cur-color");
+    box.innerHTML = "";
+    let unsaved = false;
+    COLOR_PARAMS.forEach(p => {
+      const saved = savedColor ? savedColor[p.key] : null;
+      const live = liveColor ? liveColor[p.key] : null;
+      let text = saved === null ? "—" : fmtColor(p.key, saved);
+      if (saved !== null && live !== null && saved !== live) {
+        text += ` (now: ${fmtColor(p.key, live)}, unsaved)`;
+        unsaved = true;
+      }
+      const row = document.createElement("div");
+      row.className = "srow";
+      row.innerHTML = `<span>${p.label} (saved)</span><span>${text}</span>`;
+      box.appendChild(row);
+    });
+    document.getElementById("cur-unsaved").textContent =
+      unsaved ? "⚠ Unsaved color changes: they are lost on restart. Press Save." : "";
+  }
 
+  // fillInputs=true: подставить сохранённые значения в поля сервера и интервала
+  function loadSettings(fillInputs) {
+    return fetch("/settings").then(checkOk).then(r => r.json()).then(s => {
+      lastSettings = s;
+      savedColor = s.saved;
+      liveColor = s.live;
+      if (fillInputs) {
+        serverIp.value = s.server.ip;
+        serverPort.value = s.server.port;
+        intervalInput.value = s.interval;
+      }
+      renderColor();
+      renderCurrent();
+    }).catch(e => {
+      setMsg("msg-color", "Failed to read settings: " + errText(e), true);
+      throw e;
+    });
+  }
+
+  document.getElementById("btn-settings").addEventListener("click", function () {
+    loadSettings(false).catch(() => {});
+  });
+
+  // ---- Upload server ----
+  btnServer.addEventListener("click", function () {
+    const ip = serverIp.value.trim();
+    const port = serverPort.value.trim() || "8000";
+    setMsg("msg-server", "Saving...");
+    fetch("/set_server?ip=" + encodeURIComponent(ip) + "&port=" + encodeURIComponent(port))
+      .then(checkOk).then(r => r.json())
+      .then(() => loadSettings(false))
+      .then(() => setMsg("msg-server", "Saved and confirmed on the board at " + nowText() + ": " + lastSettings.server.url))
+      .catch(e => setMsg("msg-server", "Save failed: " + errText(e), true));
+  });
+
+  // ---- Board status ----
+  function fmtUptime(sec) {
+    const d = Math.floor(sec / 86400), h = Math.floor(sec % 86400 / 3600), m = Math.floor(sec % 3600 / 60);
+    return (d ? d + " d " : "") + h + " h " + m + " min";
+  }
+
+  function loadSysInfo() {
+    fetch("/sysinfo").then(checkOk).then(r => r.json()).then(d => {
+      const temp = document.getElementById("sys-temp");
+      temp.textContent = d.temp.toFixed(1) + " °C";
+      temp.style.color = d.temp >= 80 ? "#dc3545" : (d.temp >= 70 ? "#fd7e14" : "#198754");
+      const q = d.rssi >= -55 ? "excellent" : (d.rssi >= -65 ? "good" : (d.rssi >= -75 ? "weak" : "very weak"));
+      document.getElementById("sys-wifi").textContent = d.rssi + " dBm (" + q + ")";
+      document.getElementById("sys-ip").textContent = d.ip;
+      document.getElementById("sys-uptime").textContent = fmtUptime(d.uptime);
+      document.getElementById("sys-heap").textContent = Math.round(d.heap / 1024) + " / " + Math.round(d.heap_total / 1024) + " KB free";
+      document.getElementById("sys-psram").textContent = Math.round(d.psram / 1024) + " / " + Math.round(d.psram_total / 1024) + " KB free";
+      document.getElementById("sys-reset").textContent = d.reset;
+    }).catch(e => setStatus("Failed to get board status: " + errText(e), true));
+  }
+
+  document.getElementById("btn-sys").addEventListener("click", loadSysInfo);
+
+  loadSettings(true).catch(() => {});
+  loadSysInfo();
   refreshPreview();
   updateButtons();
   setInterval(updateButtons, 3000);

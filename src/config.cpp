@@ -1,6 +1,28 @@
 #include "config.h"
 #include <Preferences.h>
 
+bool parseServerUrl(const String &url, String &host, int &port) {
+  port = DEFAULT_UPLOAD_PORT;
+  int start = url.indexOf("://");
+  start = (start < 0) ? 0 : start + 3;
+  int end = url.indexOf('/', start);
+  if (end < 0) end = url.length();
+  String hostPort = url.substring(start, end);
+  int colon = hostPort.indexOf(':');
+  if (colon >= 0) {
+    host = hostPort.substring(0, colon);
+    int p = hostPort.substring(colon + 1).toInt();
+    if (p > 0 && p <= 65535) port = p;
+  } else {
+    host = hostPort;
+  }
+  return host.length() > 0;
+}
+
+String buildServerUrl(const String &host, int port) {
+  return String("http://") + host + ":" + String(port) + UPLOAD_PATH;
+}
+
 void configLoad(Config &cfg) {
   Preferences p;
   p.begin("cam", true);

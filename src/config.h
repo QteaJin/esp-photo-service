@@ -18,5 +18,13 @@ struct Config {
   ColorSettings color;
 };
 
+// Адрес приёма фото собирается как http://<IP>:<порт><путь>
+static const int DEFAULT_UPLOAD_PORT = 8000;
+static const char UPLOAD_PATH[] = "/upload";
+
+// Разбирает сохранённый URL на хост и порт (порт по умолчанию - DEFAULT_UPLOAD_PORT).
+bool parseServerUrl(const String &url, String &host, int &port);
+String buildServerUrl(const String &host, int port);
+
 void configLoad(Config &cfg);
 void configSave(const Config &cfg);
