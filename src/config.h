@@ -16,6 +16,9 @@ struct Config {
   String serverUrl = "http://192.168.0.100:8000/upload";
   int interval = 30;
   ColorSettings color;
+  // Сервер прошивок для кнопки "Check for update": http://<хост>:<порт>/version.json и /firmware.bin
+  String fwHost = "192.168.0.220";
+  int fwPort = 8080;
 };
 
 // Адрес приёма фото собирается как http://<IP>:<порт><путь>
