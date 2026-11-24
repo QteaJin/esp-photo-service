@@ -2,3 +2,7 @@
 .vscode/
 .idea/
 notes/
+
+# Секреты и готовые прошивки для раздачи
+include/secrets.h
+firmware_out/

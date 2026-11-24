@@ -1,5 +1,6 @@
 #include "camera.h"
 #include "pins.h"
+#include "log.h"
 
 static const framesize_t FULL_SIZE = FRAMESIZE_FHD;   // 1920x1080, как в main
 static const framesize_t PREVIEW_SIZE = FRAMESIZE_VGA; // 640x480
@@ -73,11 +74,12 @@ bool cameraInit(const ColorSettings &color) {
 
   esp_err_t err = esp_camera_init(&c);
   if (err != ESP_OK) {
-    Serial.printf("[CAMERA ERR] init failed: 0x%x\n", err);
+    LOGE("camera: init failed, error 0x%x", err);
     return false;
   }
   sensor_t *s = esp_camera_sensor_get();
   if (s) {
+    LOG("camera: sensor PID 0x%04x (OV3660=0x3660, OV5640=0x5640)", s->id.PID);
     s->set_whitebal(s, 1);      // авто баланс белого вместо fix_color_balance
     s->set_awb_gain(s, 1);
     s->set_exposure_ctrl(s, 1);
@@ -104,7 +106,7 @@ camera_fb_t *cameraAcquire(bool preview) {
   }
   camera_fb_t *fb = esp_camera_fb_get();
   if (!fb) {
-    Serial.println("[CAMERA ERR] capture failed");
+    LOGE("camera: esp_camera_fb_get failed (preview=%d)", preview ? 1 : 0);
     cameraRelease(nullptr, preview);
   }
   return fb;

@@ -28,6 +28,8 @@ void configLoad(Config &cfg) {
   p.begin("cam", true);
   cfg.serverUrl = p.getString("server_url", cfg.serverUrl);
   cfg.interval = p.getInt("interval", cfg.interval);
+  cfg.fwHost = p.getString("fw_host", cfg.fwHost);
+  cfg.fwPort = p.getInt("fw_port", cfg.fwPort);
   cfg.color.brightness = p.getInt("c_bright", cfg.color.brightness);
   cfg.color.contrast = p.getInt("c_contr", cfg.color.contrast);
   cfg.color.saturation = p.getInt("c_sat", cfg.color.saturation);
@@ -42,6 +44,8 @@ void configSave(const Config &cfg) {
   p.begin("cam", false);
   p.putString("server_url", cfg.serverUrl);
   p.putInt("interval", cfg.interval);
+  p.putString("fw_host", cfg.fwHost);
+  p.putInt("fw_port", cfg.fwPort);
   p.putInt("c_bright", cfg.color.brightness);
   p.putInt("c_contr", cfg.color.contrast);
   p.putInt("c_sat", cfg.color.saturation);
